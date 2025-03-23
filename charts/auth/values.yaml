@@ -1,0 +1,78 @@
+replicaCount: 1
+
+image:
+  repository: arsen302/auth-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 50051
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  PORT: 50051
+  POSTGRES_URL: postgres://postgres:postgres@postgres:5432/auth_db?sslmode=disable
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: your-secret-key
+  JWT_EXPIRY_HOURS: 24
+  LOG_LEVEL: info
+
+configMapEnv: []
+
+secretEnv:
+  - name: JWT_SECRET
+    key: jwt-secret
+    value: your-secret-key
+
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: auth_db
+  primary:
+    persistence:
+      size: 8Gi
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      size: 8Gi 

@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: payment_system_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_MULTIPLE_DATABASES: ${POSTGRES_MULTIPLE_DATABASES:-auth_db,payment_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deployments/postgres/init-multiple-db.sh:/docker-entrypoint-initdb.d/init-multiple-db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: payment_system_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: payment_system_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: payment_system_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: payment_system_auth_service
+    environment:
+      ENV_FILE: /app/.env
+      PORT: ${AUTH_PORT:-50051}
+      POSTGRES_URL: ${AUTH_POSTGRES_URL:-postgres://postgres:postgres@postgres:5432/auth_db?sslmode=disable}
+      REDIS_URL: ${AUTH_REDIS_URL:-redis://redis:6379/0}
+      JWT_SECRET: ${AUTH_JWT_SECRET:-development_secret_key_replace_in_production}
+      JWT_EXPIRY_HOURS: ${AUTH_JWT_EXPIRY_HOURS:-24}
+      LOG_LEVEL: ${AUTH_LOG_LEVEL:-debug}
+    ports:
+      - "${AUTH_PORT:-50051}:${AUTH_PORT:-50051}"
+    volumes:
+      - ./auth-service/.env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment_system_payment_service
+    environment:
+      ENV_FILE: /app/.env
+      PORT: ${PAYMENT_PORT:-50052}
+      POSTGRES_URL: ${PAYMENT_POSTGRES_URL:-postgres://postgres:postgres@postgres:5432/payment_db?sslmode=disable}
+      KAFKA_BOOTSTRAP_SERVERS: ${PAYMENT_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_PAYMENT_TOPIC: ${PAYMENT_KAFKA_TOPIC:-payments}
+      LOG_LEVEL: ${PAYMENT_LOG_LEVEL:-debug}
+    ports:
+      - "${PAYMENT_PORT:-50052}:${PAYMENT_PORT:-50052}"
+    volumes:
+      - ./payment-service/.env:/app/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: payment_system_notification_service
+    environment:
+      ENV_FILE: /app/.env
+      KAFKA_BOOTSTRAP_SERVERS: ${NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KAFKA_PAYMENT_TOPIC: ${NOTIFICATION_KAFKA_TOPIC:-payments}
+      KAFKA_GROUP_ID: ${NOTIFICATION_KAFKA_GROUP_ID:-notification-service}
+      LOG_LEVEL: ${NOTIFICATION_LOG_LEVEL:-debug}
+    volumes:
+      - ./notification-service/.env:/app/.env
+    depends_on:
+      - kafka
+
+volumes:
+  postgres_data:
+  redis_data:

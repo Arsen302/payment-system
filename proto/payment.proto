@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package payment;
+
+option go_package = "github.com/Arsen302/payment-system/payment-service/api/proto/payment";
+
+// Payment service provides payment processing functionalities
+service PaymentService {
+  // CreatePayment processes a new payment
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse) {}
+  
+  // GetPayment retrieves payment details by ID
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse) {}
+  
+  // ListPayments retrieves payments for a user
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse) {}
+  
+  // CancelPayment cancels a pending payment
+  rpc CancelPayment(CancelPaymentRequest) returns (CancelPaymentResponse) {}
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PAYMENT_STATUS_UNKNOWN = 0;
+  PAYMENT_STATUS_PENDING = 1;
+  PAYMENT_STATUS_COMPLETED = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_CANCELLED = 4;
+}
+
+// Payment represents a payment transaction
+message Payment {
+  string id = 1;
+  string user_id = 2;
+  double amount = 3;
+  string currency = 4;
+  PaymentStatus status = 5;
+  string description = 6;
+  int64 created_at = 7;
+  int64 updated_at = 8;
+}
+
+// CreatePaymentRequest contains payment details
+message CreatePaymentRequest {
+  string user_id = 1;
+  double amount = 2;
+  string currency = 3;
+  string description = 4;
+}
+
+// CreatePaymentResponse contains the result of payment creation
+message CreatePaymentResponse {
+  bool success = 1;
+  string message = 2;
+  Payment payment = 3;
+}
+
+// GetPaymentRequest contains the payment ID to retrieve
+message GetPaymentRequest {
+  string payment_id = 1;
+  string user_id = 2; // For authorization
+}
+
+// GetPaymentResponse contains payment details
+message GetPaymentResponse {
+  bool success = 1;
+  string message = 2;
+  Payment payment = 3;
+}
+
+// ListPaymentsRequest contains filtering parameters
+message ListPaymentsRequest {
+  string user_id = 1;
+  optional PaymentStatus status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// ListPaymentsResponse contains a list of payments
+message ListPaymentsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Payment payments = 3;
+  int32 total = 4;
+}
+
+// CancelPaymentRequest contains the payment ID to cancel
+message CancelPaymentRequest {
+  string payment_id = 1;
+  string user_id = 2; // For authorization
+}
+
+// CancelPaymentResponse contains the result of payment cancellation
+message CancelPaymentResponse {
+  bool success = 1;
+  string message = 2;
+  Payment payment = 3;
+} 

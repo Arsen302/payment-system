@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: arsen302/notification-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_PAYMENT_TOPIC: payments
+  KAFKA_GROUP_ID: notification-service
+  LOG_LEVEL: info
+
+configMapEnv: []
+
+secretEnv: [] 

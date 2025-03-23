@@ -1,0 +1,78 @@
+replicaCount: 1
+
+image:
+  repository: arsen302/payment-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 50052
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  PORT: 50052
+  POSTGRES_URL: postgres://postgres:postgres@postgres:5432/payment_db?sslmode=disable
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_PAYMENT_TOPIC: payments
+  LOG_LEVEL: info
+
+configMapEnv: []
+
+secretEnv: []
+
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: postgres
+    database: payment_db
+  primary:
+    persistence:
+      size: 8Gi
+
+kafka:
+  enabled: true
+  replicaCount: 3
+  defaultReplicationFactor: 3
+  autoCreateTopicsEnable: true
+  persistence:
+    size: 8Gi
+  zookeeper:
+    enabled: true
+    replicaCount: 3
+    persistence:
+      size: 2Gi 

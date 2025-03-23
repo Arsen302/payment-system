@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  tag: "dev"
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  LOG_LEVEL: debug
+
+postgresql:
+  primary:
+    persistence:
+      size: 1Gi
+
+kafka:
+  replicaCount: 1
+  defaultReplicationFactor: 1
+  persistence:
+    size: 1Gi
+  zookeeper:
+    replicaCount: 1
+    persistence:
+      size: 1Gi 

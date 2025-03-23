@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: auth-service-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arsen302/payment-system.git
+    targetRevision: HEAD
+    path: charts/auth
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payment-system-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: payment-service-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arsen302/payment-system.git
+    targetRevision: HEAD
+    path: charts/payment
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payment-system-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notification-service-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arsen302/payment-system.git
+    targetRevision: HEAD
+    path: charts/notification
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payment-system-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Arsen302/payment-system.git
+    targetRevision: HEAD
+    path: charts/infrastructure
+    helm:
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: payment-system-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true 
