@@ -1,72 +1,107 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
 )
 
-// Config holds all configuration for the service
+// Config represents service configuration
 type Config struct {
-	Port                    int
-	PostgresURL             string
-	KafkaBootstrapServers   string
-	KafkaPaymentTopic       string
-	LogLevel                string
-	GrpcMaxReceiveMessageSize int
+	Server   ServerConfig
+	Database DatabaseConfig
+	Auth     AuthConfig
+	Kafka    KafkaConfig
+	Metrics  MetricsConfig
 }
 
-// LoadConfig loads configuration from environment variables
-func LoadConfig() (*Config, error) {
-	// Load .env file if it exists
-	envFile := os.Getenv("ENV_FILE")
-	if envFile == "" {
-		// Try to find and load .env files in order of precedence
-		possibleEnvFiles := []string{
-			".env",
-			".env.local",
-			filepath.Join("..", "..", ".env"),
-			filepath.Join("..", "..", ".env.local"),
-		}
+// ServerConfig represents server configuration
+type ServerConfig struct {
+	Port string
+}
 
-		for _, file := range possibleEnvFiles {
-			if _, err := os.Stat(file); err == nil {
-				_ = godotenv.Load(file)
-				break
-			}
-		}
-	} else {
-		_ = godotenv.Load(envFile)
-	}
+// DatabaseConfig represents database configuration
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	SSLMode  string
+}
 
-	port, err := strconv.Atoi(getEnv("PORT", "50052"))
+// AuthConfig represents auth service configuration
+type AuthConfig struct {
+	URL string
+}
+
+// KafkaConfig represents Kafka configuration
+type KafkaConfig struct {
+	Brokers []string
+	Topic   string
+}
+
+// MetricsConfig represents metrics configuration
+type MetricsConfig struct {
+	Enabled bool
+	Port    string
+}
+
+// Load loads configuration from environment variables
+func Load() *Config {
+	err := godotenv.Load()
 	if err != nil {
-		return nil, fmt.Errorf("invalid port: %w", err)
-	}
-
-	grpcMaxSize, err := strconv.Atoi(getEnv("GRPC_MAX_RECEIVE_MESSAGE_SIZE", "4194304")) // 4MB
-	if err != nil {
-		return nil, fmt.Errorf("invalid gRPC max message size: %w", err)
+		log.Println("Warning: .env file not found, using environment variables")
 	}
 
 	return &Config{
-		Port:                    port,
-		PostgresURL:             getEnv("POSTGRES_URL", "postgres://postgres:postgres@localhost:5432/payment_db?sslmode=disable"),
-		KafkaBootstrapServers:   getEnv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"),
-		KafkaPaymentTopic:       getEnv("KAFKA_PAYMENT_TOPIC", "payments"),
-		LogLevel:                getEnv("LOG_LEVEL", "info"),
-		GrpcMaxReceiveMessageSize: grpcMaxSize,
-	}, nil
+		Server: ServerConfig{
+			Port: getEnv("SERVER_PORT", "8080"),
+		},
+		Database: DatabaseConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnv("DB_PORT", "5432"),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "postgres"),
+			Name:     getEnv("DB_NAME", "payment"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		},
+		Auth: AuthConfig{
+			URL: getEnv("AUTH_SERVICE_URL", "http://auth-service:8080"),
+		},
+		Kafka: KafkaConfig{
+			Brokers: []string{getEnv("KAFKA_BROKER", "kafka:9092")},
+			Topic:   getEnv("KAFKA_TOPIC", "payment-events"),
+		},
+		Metrics: MetricsConfig{
+			Enabled: getBoolEnv("METRICS_ENABLED", true),
+			Port:    getEnv("METRICS_PORT", "9090"),
+		},
+	}
 }
 
-// getEnv gets an environment variable or returns a default value
+// Helper function to get environment variable with default value
 func getEnv(key, defaultValue string) string {
-	value, exists := os.LookupEnv(key)
-	if !exists {
+	value := os.Getenv(key)
+	if value == "" {
 		return defaultValue
 	}
 	return value
+}
+
+// Helper function to get boolean environment variable with default value
+func getBoolEnv(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	
+	boolValue, err := strconv.ParseBool(value)
+	if err != nil {
+		return defaultValue
+	}
+	
+	return boolValue
 } 

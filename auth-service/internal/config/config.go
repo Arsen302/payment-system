@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,17 +10,41 @@ import (
 
 // Config holds all configuration for the service
 type Config struct {
-	Port                    int
-	PostgresURL             string
-	RedisURL                string
-	JWTSecret               string
-	JWTExpiryHours          int
-	LogLevel                string
-	GrpcMaxReceiveMessageSize int
+	Server   ServerConfig
+	Database DatabaseConfig
+	JWT      JWTConfig
+	Metrics  MetricsConfig
 }
 
-// LoadConfig loads configuration from environment variables
-func LoadConfig() (*Config, error) {
+// ServerConfig holds the configuration for the HTTP server
+type ServerConfig struct {
+	Port string
+}
+
+// DatabaseConfig holds the configuration for the database
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+}
+
+// JWTConfig holds the configuration for JWT tokens
+type JWTConfig struct {
+	Secret     string
+	ExpireMins int
+}
+
+// MetricsConfig holds the configuration for Prometheus metrics
+type MetricsConfig struct {
+	Enabled bool
+	Port    string
+}
+
+// Load loads the configuration from environment variables
+func Load() (*Config, error) {
 	// Load .env file if it exists
 	envFile := os.Getenv("ENV_FILE")
 	if envFile == "" {
@@ -43,37 +66,46 @@ func LoadConfig() (*Config, error) {
 		_ = godotenv.Load(envFile)
 	}
 
-	port, err := strconv.Atoi(getEnv("PORT", "50051"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid port: %w", err)
-	}
-
-	jwtExpiryHours, err := strconv.Atoi(getEnv("JWT_EXPIRY_HOURS", "24"))
-	if err != nil {
-		return nil, fmt.Errorf("invalid JWT expiry hours: %w", err)
-	}
-
-	grpcMaxSize, err := strconv.Atoi(getEnv("GRPC_MAX_RECEIVE_MESSAGE_SIZE", "4194304")) // 4MB
-	if err != nil {
-		return nil, fmt.Errorf("invalid gRPC max message size: %w", err)
-	}
+	expireMins, _ := strconv.Atoi(getEnv("JWT_EXPIRE_MINUTES", "60"))
 
 	return &Config{
-		Port:                    port,
-		PostgresURL:             getEnv("POSTGRES_URL", "postgres://postgres:postgres@localhost:5432/auth_db?sslmode=disable"),
-		RedisURL:                getEnv("REDIS_URL", "redis://localhost:6379/0"),
-		JWTSecret:               getEnv("JWT_SECRET", "your-secret-key"),
-		JWTExpiryHours:          jwtExpiryHours,
-		LogLevel:                getEnv("LOG_LEVEL", "info"),
-		GrpcMaxReceiveMessageSize: grpcMaxSize,
+		Server: ServerConfig{
+			Port: getEnv("SERVER_PORT", "8080"),
+		},
+		Database: DatabaseConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnv("DB_PORT", "5432"),
+			User:     getEnv("DB_USER", "postgres"),
+			Password: getEnv("DB_PASSWORD", "postgres"),
+			DBName:   getEnv("DB_NAME", "auth"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		},
+		JWT: JWTConfig{
+			Secret:     getEnv("JWT_SECRET", "your-secret-key-here"),
+			ExpireMins: expireMins,
+		},
+		Metrics: MetricsConfig{
+			Enabled: getEnvAsBool("METRICS_ENABLED", true),
+			Port:    getEnv("METRICS_PORT", "9090"),
+		},
 	}, nil
 }
 
-// getEnv gets an environment variable or returns a default value
+// Helper function to get an environment variable with a default value
 func getEnv(key, defaultValue string) string {
-	value, exists := os.LookupEnv(key)
-	if !exists {
-		return defaultValue
+	if value, exists := os.LookupEnv(key); exists {
+		return value
 	}
-	return value
+	return defaultValue
+}
+
+// Helper function to get an environment variable as a boolean
+func getEnvAsBool(key string, defaultValue bool) bool {
+	if value, exists := os.LookupEnv(key); exists {
+		boolValue, err := strconv.ParseBool(value)
+		if err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
 } 
