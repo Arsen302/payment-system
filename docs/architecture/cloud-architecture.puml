@@ -1,0 +1,71 @@
+@startuml Cloud Architecture
+
+!theme plain
+skinparam componentStyle uml2
+
+cloud "AWS" {
+    package "VPC" {
+        package "Public Subnet" {
+            [Internet Gateway]
+            [Load Balancer]
+            [NAT Gateway]
+        }
+
+        package "Private Subnet" {
+            package "EKS Cluster" {
+                [Auth Service Pods]
+                [Payment Service Pods]
+                [Notification Service Pods]
+                [Prometheus]
+                [Grafana]
+                [ArgoCD]
+            }
+
+            package "RDS" {
+                [PostgreSQL]
+            }
+
+            package "ElastiCache" {
+                [Redis]
+            }
+
+            package "MSK" {
+                [Kafka]
+            }
+        }
+
+        package "Security" {
+            [Security Groups]
+            [Network ACLs]
+            [IAM Roles]
+        }
+    }
+
+    package "Monitoring" {
+        [CloudWatch]
+        [X-Ray]
+    }
+
+    package "Storage" {
+        [S3]
+        [EBS]
+    }
+}
+
+' Connections
+[Internet Gateway] --> [Load Balancer]
+[Load Balancer] --> [Auth Service Pods]
+[Load Balancer] --> [Payment Service Pods]
+
+[Auth Service Pods] --> [PostgreSQL]
+[Payment Service Pods] --> [PostgreSQL]
+[Payment Service Pods] --> [Redis]
+[Payment Service Pods] --> [Kafka]
+[Kafka] --> [Notification Service Pods]
+
+[Prometheus] --> [CloudWatch]
+[Auth Service Pods] --> [X-Ray]
+[Payment Service Pods] --> [X-Ray]
+[Notification Service Pods] --> [X-Ray]
+
+@enduml 

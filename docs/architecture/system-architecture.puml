@@ -1,0 +1,63 @@
+@startuml System Architecture
+
+!theme plain
+skinparam componentStyle uml2
+
+package "Client Applications" {
+    [Web Client]
+    [Mobile App]
+    [API Client]
+}
+
+package "API Gateway" {
+    [Gateway]
+}
+
+package "Microservices" {
+    [Auth Service]
+    [Payment Service]
+    [Notification Service]
+}
+
+database "PostgreSQL" {
+    [User DB]
+    [Transaction DB]
+}
+
+database "Redis" {
+    [Session Cache]
+    [Rate Limiter]
+}
+
+queue "Kafka" {
+    [Payment Events]
+    [Notification Events]
+}
+
+cloud "Email Provider" {
+    [SMTP Service]
+}
+
+' Client to Gateway
+[Web Client] --> [Gateway]
+[Mobile App] --> [Gateway]
+[API Client] --> [Gateway]
+
+' Gateway to Services
+[Gateway] --> [Auth Service]
+[Gateway] --> [Payment Service]
+
+' Auth Service
+[Auth Service] --> [User DB]
+[Auth Service] --> [Session Cache]
+
+' Payment Service
+[Payment Service] --> [Transaction DB]
+[Payment Service] --> [Rate Limiter]
+[Payment Service] --> [Payment Events]
+
+' Notification Service
+[Notification Events] --> [Notification Service]
+[Notification Service] --> [SMTP Service]
+
+@enduml 
